@@ -9,6 +9,18 @@ class CryptoAPI:
         self.coingecko_base = "https://api.coingecko.com/api/v3"
         self.binance_base = "https://api.binance.com/api/v3"
     
+    def get_price_history(self, coin_id, days=30):
+        """Get price history - tries Binance first, then CoinGecko"""
+        # Try Binance first (more reliable)
+        binance_symbol = self.get_binance_symbol(coin_id)
+        if binance_symbol:
+            binance_data = self.get_binance_klines(binance_symbol, '1d', days)
+            if binance_data is not None:
+                return binance_data
+        
+        # Fallback to CoinGecko
+        return self.get_coingecko_price_history(coin_id, days)
+    
     def get_coingecko_price_history(self, coin_id, days=30):
         """Get price history from CoinGecko - real-time only"""
         try:
@@ -32,6 +44,22 @@ class CryptoAPI:
         except Exception as e:
             print(f"Error fetching CoinGecko data: {e}")
             return None
+    
+    def get_binance_symbol(self, coin_id):
+        """Convert CoinGecko ID to Binance symbol"""
+        symbol_map = {
+            'bitcoin': 'BTCUSDT',
+            'ethereum': 'ETHUSDT',
+            'cardano': 'ADAUSDT',
+            'polkadot': 'DOTUSDT',
+            'chainlink': 'LINKUSDT',
+            'binancecoin': 'BNBUSDT',
+            'ripple': 'XRPUSDT',
+            'solana': 'SOLUSDT',
+            'dogecoin': 'DOGEUSDT',
+            'avalanche-2': 'AVAXUSDT'
+        }
+        return symbol_map.get(coin_id)
     
     def get_binance_klines(self, symbol, interval='1d', limit=30):
         """Get kline data from Binance"""
@@ -62,7 +90,21 @@ class CryptoAPI:
             return None
     
     def get_current_price(self, coin_id):
-        """Get current price from CoinGecko - real-time only"""
+        """Get current price - tries Binance first, then CoinGecko"""
+        # Try Binance first
+        binance_symbol = self.get_binance_symbol(coin_id)
+        if binance_symbol:
+            try:
+                url = f"{self.binance_base}/ticker/price"
+                params = {'symbol': binance_symbol}
+                response = requests.get(url, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+                return {coin_id: {'usd': float(data['price'])}}
+            except Exception as e:
+                print(f"Binance price fetch failed: {e}")
+        
+        # Fallback to CoinGecko
         try:
             url = f"{self.coingecko_base}/simple/price"
             params = {
