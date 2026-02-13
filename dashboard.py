@@ -219,9 +219,10 @@ def show_volatility_analysis():
                 api = CryptoAPI()
                 
                 # Get price history
-                price_data = api.get_coingecko_price_history(coin_id, period_days)
+                price_data = api.get_price_history(coin_id, period_days)
                 
                 if price_data is not None and len(price_data) > 0:
+                    st.success(f"✅ Successfully fetched {len(price_data)} days of data for {coin_name}")
                     # Calculate volatility
                     volatility_data = api.calculate_volatility(price_data)
                     
@@ -295,6 +296,10 @@ def show_volatility_analysis():
                         st.error("❌ Unable to calculate volatility. Insufficient data.")
                 else:
                     st.error("❌ Unable to fetch data. Please try again later.")
+                    st.info("💡 This could be due to:")
+                    st.info("• API rate limits (try again in a few minutes)")
+                    st.info("• Network connectivity issues")
+                    st.info("• Invalid cryptocurrency selection")
     else:
         st.info("💡 Search for a cryptocurrency or select from the popular options below:")
         

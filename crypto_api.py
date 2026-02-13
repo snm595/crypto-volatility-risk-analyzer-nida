@@ -9,6 +9,28 @@ class CryptoAPI:
         self.coingecko_base = "https://api.coingecko.com/api/v3"
         self.binance_base = "https://api.binance.com/api/v3"
     
+    def get_price_history(self, coin_id, days=30):
+        """Get price history - tries Binance first, then CoinGecko"""
+        print(f"Attempting to fetch price history for {coin_id} ({days} days)")
+        
+        # Try Binance first (more reliable)
+        binance_symbol = self.get_binance_symbol(coin_id)
+        print(f"Binance symbol for {coin_id}: {binance_symbol}")
+        
+        if binance_symbol:
+            binance_data = self.get_binance_klines(binance_symbol, '1d', days)
+            if binance_data is not None:
+                print(f"Successfully got data from Binance for {coin_id}")
+                return binance_data
+            else:
+                print(f"Binance failed for {coin_id}, trying CoinGecko")
+        else:
+            print(f"No Binance symbol found for {coin_id}, trying CoinGecko")
+        
+        # Fallback to CoinGecko
+        print(f"Trying CoinGecko for {coin_id}")
+        return self.get_coingecko_price_history(coin_id, days)
+    
     def get_coingecko_price_history(self, coin_id, days=30):
         """Get price history from CoinGecko - real-time only"""
         try:
@@ -33,6 +55,22 @@ class CryptoAPI:
             print(f"Error fetching CoinGecko data: {e}")
             return None
     
+    def get_binance_symbol(self, coin_id):
+        """Convert CoinGecko ID to Binance symbol"""
+        symbol_map = {
+            'bitcoin': 'BTCUSDT',
+            'ethereum': 'ETHUSDT',
+            'cardano': 'ADAUSDT',
+            'polkadot': 'DOTUSDT',
+            'chainlink': 'LINKUSDT',
+            'binancecoin': 'BNBUSDT',
+            'ripple': 'XRPUSDT',
+            'solana': 'SOLUSDT',
+            'dogecoin': 'DOGEUSDT',
+            'avalanche-2': 'AVAXUSDT'
+        }
+        return symbol_map.get(coin_id)
+    
     def get_binance_klines(self, symbol, interval='1d', limit=30):
         """Get kline data from Binance"""
         try:
@@ -46,6 +84,10 @@ class CryptoAPI:
             response.raise_for_status()
             data = response.json()
             
+            if not data:
+                print(f"No data returned from Binance for {symbol}")
+                return None
+            
             df = pd.DataFrame(data, columns=[
                 'timestamp', 'open', 'high', 'low', 'close', 'volume',
                 'close_time', 'quote_asset_volume', 'number_of_trades',
@@ -56,13 +98,28 @@ class CryptoAPI:
             df.set_index('date', inplace=True)
             df['price'] = pd.to_numeric(df['close'])
             
+            print(f"Successfully fetched {len(df)} records from Binance for {symbol}")
             return df[['price']]
         except Exception as e:
-            print(f"Error fetching Binance data: {e}")
+            print(f"Error fetching Binance data for {symbol}: {e}")
             return None
     
     def get_current_price(self, coin_id):
-        """Get current price from CoinGecko - real-time only"""
+        """Get current price - tries Binance first, then CoinGecko"""
+        # Try Binance first
+        binance_symbol = self.get_binance_symbol(coin_id)
+        if binance_symbol:
+            try:
+                url = f"{self.binance_base}/ticker/price"
+                params = {'symbol': binance_symbol}
+                response = requests.get(url, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+                return {coin_id: {'usd': float(data['price'])}}
+            except Exception as e:
+                print(f"Binance price fetch failed: {e}")
+        
+        # Fallback to CoinGecko
         try:
             url = f"{self.coingecko_base}/simple/price"
             params = {
