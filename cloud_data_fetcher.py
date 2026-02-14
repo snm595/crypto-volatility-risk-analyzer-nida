@@ -193,7 +193,7 @@ class CloudDataFetcher:
                 response.raise_for_status()
                 data = response.json()
                 
-                result = {symbol: {'usd': float(data['price'])}
+                result = {symbol: {'usd': float(data['price'])}}
                 self.cache[cache_key] = {
                     'data': result,
                     'timestamp': datetime.now()
@@ -213,7 +213,7 @@ class CloudDataFetcher:
                 response.raise_for_status()
                 data = response.json()
                 
-                result = {symbol: {'usd': float(data[coin_id]['usd'])}
+                result = {symbol: {'usd': float(data[coin_id]['usd'])}}
                 self.cache[cache_key] = {
                     'data': result,
                     'timestamp': datetime.now()
