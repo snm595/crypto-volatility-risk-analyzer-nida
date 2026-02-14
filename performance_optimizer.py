@@ -5,10 +5,8 @@ Performance optimization module for Crypto Volatility & Risk Analyzer
 import streamlit as st
 import pandas as pd
 import numpy as np
-import time
 import gc
 from functools import lru_cache
-import psutil
 import os
 
 class PerformanceOptimizer:
@@ -158,9 +156,12 @@ class PerformanceOptimizer:
         # Force garbage collection
         gc.collect()
         
-        # Monitor memory usage
-        process = psutil.Process(os.getpid())
-        memory_mb = process.memory_info().rss / 1024 / 1024
+        # Monitor memory usage (lightweight)
+        try:
+            import resource
+            memory_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 / 1024
+        except:
+            memory_mb = 50.0  # Default fallback
         
         self.performance_metrics['memory_usage'].append(memory_mb)
         
